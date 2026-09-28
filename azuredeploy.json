@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "12618566992735009415"
+      "templateHash": "10531945339288220353"
     }
   },
   "parameters": {
@@ -13,7 +13,7 @@
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Azure region for all resources. Defaults to the resource group region."
+        "description": "Azure region for all resources, e.g. centralindia. If reusing an existing plan, this must match that plan's region."
       }
     },
     "namePrefix": {
@@ -69,6 +69,13 @@
       "metadata": {
         "description": "URL of the published function code package. Keep the default."
       }
+    },
+    "existingPlanName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Name of an existing Consumption plan in this resource group to reuse. Leave empty to create a new plan."
+      }
     }
   },
   "variables": {
@@ -78,7 +85,9 @@
     "appInsightsName": "[format('{0}-ai-{1}', parameters('namePrefix'), variables('suffix'))]",
     "workspaceName": "[format('{0}-law-{1}', parameters('namePrefix'), variables('suffix'))]",
     "storageName": "[take(toLower(replace(format('{0}st{1}', parameters('namePrefix'), variables('suffix')), '-', '')), 24)]",
-    "contentShareName": "[toLower(variables('functionAppName'))]"
+    "contentShareName": "[toLower(variables('functionAppName'))]",
+    "useExistingPlan": "[not(empty(parameters('existingPlanName')))]",
+    "planId": "[if(variables('useExistingPlan'), resourceId('Microsoft.Web/serverfarms', parameters('existingPlanName')), resourceId('Microsoft.Web/serverfarms', variables('planName')))]"
   },
   "resources": [
     {
@@ -123,6 +132,7 @@
       ]
     },
     {
+      "condition": "[not(variables('useExistingPlan'))]",
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-12-01",
       "name": "[variables('planName')]",
@@ -143,7 +153,7 @@
       "location": "[parameters('location')]",
       "kind": "functionapp",
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
+        "serverFarmId": "[variables('planId')]",
         "httpsOnly": true,
         "siteConfig": {
           "netFrameworkVersion": "v8.0",
